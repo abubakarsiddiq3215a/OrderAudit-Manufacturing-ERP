@@ -175,6 +175,227 @@ app.get("/api/stock", async (req, res) => {
 });
 
 
+// ==========================================
+// PURCHASE MODULE: MASTER DATA AND HISTORY APIs
+// ==========================================
+
+// API: Get all suppliers
+app.get("/api/suppliers", async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT
+                supplier_id,
+                supplier_name,
+                phone,
+                email,
+                gstin,
+                address,
+                city,
+                state,
+                state_code
+            FROM suppliers
+            ORDER BY supplier_name;
+        `);
+
+        res.status(200).json({
+            status: "success",
+            total_suppliers: result.rows.length,
+            suppliers: result.rows
+        });
+
+    } catch (error) {
+        console.error("Suppliers API error:", error.message);
+
+        res.status(500).json({
+            status: "error",
+            message: "Unable to retrieve suppliers."
+        });
+    }
+});
+
+
+// API: Get active raw materials
+app.get("/api/materials", async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT
+                rm.material_id,
+                rm.material_code,
+                rm.material_name,
+                rm.unit_id,
+                rm.reorder_level,
+                u.unit_code,
+                u.unit_name,
+                u.unit_type
+            FROM raw_materials rm
+            JOIN units u
+                ON rm.unit_id = u.unit_id
+            WHERE rm.is_active = TRUE
+            ORDER BY rm.material_name;
+        `);
+
+        res.status(200).json({
+            status: "success",
+            total_materials: result.rows.length,
+            materials: result.rows
+        });
+
+    } catch (error) {
+        console.error("Materials API error:", error.message);
+
+        res.status(500).json({
+            status: "error",
+            message: "Unable to retrieve raw materials."
+        });
+    }
+});
+
+
+// API: Get measurement units
+app.get("/api/units", async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT
+                unit_id,
+                unit_code,
+                unit_name,
+                unit_type,
+                conversion_factor
+            FROM units
+            ORDER BY unit_name;
+        `);
+
+        res.status(200).json({
+            status: "success",
+            total_units: result.rows.length,
+            units: result.rows
+        });
+
+    } catch (error) {
+        console.error("Units API error:", error.message);
+
+        res.status(500).json({
+            status: "error",
+            message: "Unable to retrieve units."
+        });
+    }
+});
+
+
+// API: Get purchase history
+app.get("/api/purchases", async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT
+                ph.purchase_id,
+                ph.supplier_id,
+                s.supplier_name,
+                ph.invoice_number,
+                ph.purchase_date,
+                ph.subtotal,
+                ph.tax_amount,
+                ph.total_amount,
+                ph.status,
+                ph.remarks,
+                ph.created_at
+            FROM purchase_headers ph
+            JOIN suppliers s
+                ON ph.supplier_id = s.supplier_id
+            ORDER BY ph.purchase_date DESC, ph.purchase_id DESC;
+        `);
+
+        res.status(200).json({
+            status: "success",
+            total_records: result.rows.length,
+            purchases: result.rows
+        });
+
+    } catch (error) {
+        console.error("Purchase history API error:", error.message);
+
+        res.status(500).json({
+            status: "error",
+            message: "Unable to retrieve purchase history."
+        });
+    }
+});
+
+
+// API: Get individual purchase details
+app.get("/api/purchases/:id", async (req, res) => {
+    try {
+        const purchaseId = Number(req.params.id);
+
+        if (!Number.isInteger(purchaseId) || purchaseId <= 0) {
+            return res.status(400).json({
+                status: "error",
+                message: "Invalid purchase ID."
+            });
+        }
+
+        const headerResult = await pool.query(`
+            SELECT
+                ph.*,
+                s.supplier_name,
+                s.phone,
+                s.email,
+                s.gstin,
+                s.address,
+                s.city,
+                s.state
+            FROM purchase_headers ph
+            JOIN suppliers s
+                ON ph.supplier_id = s.supplier_id
+            WHERE ph.purchase_id = $1;
+        `, [purchaseId]);
+
+        if (headerResult.rows.length === 0) {
+            return res.status(404).json({
+                status: "error",
+                message: "Purchase record not found."
+            });
+        }
+
+        const itemsResult = await pool.query(`
+            SELECT
+                pi.purchase_item_id,
+                pi.material_id,
+                rm.material_code,
+                rm.material_name,
+                pi.quantity,
+                pi.unit_id,
+                u.unit_code,
+                u.unit_name,
+                pi.rate,
+                pi.tax_rate,
+                pi.taxable_amount,
+                pi.tax_amount,
+                pi.total_amount
+            FROM purchase_items pi
+            JOIN raw_materials rm
+                ON pi.material_id = rm.material_id
+            JOIN units u
+                ON pi.unit_id = u.unit_id
+            WHERE pi.purchase_id = $1
+            ORDER BY pi.purchase_item_id;
+        `, [purchaseId]);
+
+        res.status(200).json({
+            status: "success",
+            purchase: headerResult.rows[0],
+            items: itemsResult.rows
+        });
+
+    } catch (error) {
+        console.error("Purchase details API error:", error.message);
+
+        res.status(500).json({
+            status: "error",
+            message: "Unable to retrieve purchase details."
+        });
+    }
+});
+
 
 // ==========================================
 // API 4: Record a raw material purchase
@@ -182,6 +403,7 @@ app.get("/api/stock", async (req, res) => {
 
 app.post("/api/purchases", async (req, res) => {
     const client = await pool.connect();
+    let transactionStarted = false;
 
     try {
         const {
@@ -206,6 +428,7 @@ app.post("/api/purchases", async (req, res) => {
         }
 
         await client.query("BEGIN");
+        transactionStarted = true;
 
         let subtotal = 0;
         let totalTax = 0;
@@ -395,6 +618,7 @@ app.post("/api/purchases", async (req, res) => {
 
         // Commit all database changes together
         await client.query("COMMIT");
+        transactionStarted = false;
 
         res.status(201).json({
             status: "success",
@@ -409,9 +633,25 @@ app.post("/api/purchases", async (req, res) => {
 
     } catch (error) {
 
-        await client.query("ROLLBACK");
+        // Roll back only if this request successfully started a transaction.
+        if (transactionStarted) {
+            try {
+                await client.query("ROLLBACK");
+            } catch (rollbackError) {
+                console.error("Purchase rollback error:", rollbackError.message);
+            }
+        }
 
         console.error("Purchase API error:", error.message);
+
+        // PostgreSQL error 23505 means a UNIQUE constraint was violated.
+        // In this module, this includes a duplicate supplier invoice number.
+        if (error.code === "23505") {
+            return res.status(409).json({
+                status: "error",
+                message: "This supplier invoice number has already been recorded. Please use a different invoice number."
+            });
+        }
 
         res.status(400).json({
             status: "error",

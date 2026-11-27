@@ -4,6 +4,7 @@ import { getStock, getSalesOrders } from "./api";
 import Invoices from "./Invoices";
 import Production from "./Production";
 import Reports from "./Reports";
+import Purchases from "./Purchases";
 import "./App.css";
 
 function App() {
@@ -68,6 +69,7 @@ function App() {
     [stock]
   );
 
+  // Sidebar navigation items
   const menuItems = [
     { name: "Dashboard", icon: "▦" },
     { name: "Sales Orders", icon: "▤" },
@@ -75,7 +77,7 @@ function App() {
     { name: "Inventory", icon: "▥" },
     { name: "Production", icon: "⚙" },
     { name: "Purchases", icon: "＋" },
-    { name: "Reports", icon: "▨" }
+    { name: "Reports", icon: "▨" },
   ];
 
   function formatDate(dateValue) {
@@ -88,7 +90,7 @@ function App() {
     return date.toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "short",
-      year: "numeric"
+      year: "numeric",
     });
   }
 
@@ -96,7 +98,7 @@ function App() {
     return Number(value || 0).toLocaleString("en-IN", {
       style: "currency",
       currency: "INR",
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     });
   }
 
@@ -359,7 +361,9 @@ function App() {
               <div className="stat-card">
                 <p className="stat-title">Orders Retrieved</p>
                 <h3>{ordersLoading ? "..." : orders.length}</h3>
-                <p className="stat-description">Orders returned by the API</p>
+                <p className="stat-description">
+                  Orders returned by the API
+                </p>
               </div>
 
               <div className="stat-card">
@@ -371,7 +375,9 @@ function App() {
                       (order) => order.status === "PENDING"
                     ).length}
                 </h3>
-                <p className="stat-description">Awaiting admin review</p>
+                <p className="stat-description">
+                  Awaiting admin review
+                </p>
               </div>
 
               <div className="stat-card">
@@ -439,9 +445,7 @@ function App() {
                             <strong>{order.customer_name}</strong>
                           </td>
                           <td>{order.customer_type || "—"}</td>
-                          <td>
-                            {order.state || "—"}
-                          </td>
+                          <td>{order.state || "—"}</td>
                           <td>{order.total_items ?? "—"}</td>
                           <td className="quantity">
                             {formatCurrency(order.order_total)}
@@ -469,18 +473,27 @@ function App() {
             </p>
           </section>
         )}
+
         {/* INVOICES MODULE */}
+        {activePage === "Invoices" && <Invoices />}
+
         {/* PRODUCTION MODULE */}
         {activePage === "Production" && <Production />}
+
         {/* REPORTS MODULE */}
         {activePage === "Reports" && <Reports />}
+
+        {/* PURCHASES MODULE */}
+        {activePage === "Purchases" && <Purchases />}
+
         {/* OTHER MODULE PLACEHOLDERS */}
         {activePage !== "Dashboard" &&
           activePage !== "Inventory" &&
           activePage !== "Sales Orders" &&
           activePage !== "Invoices" &&
           activePage !== "Production" &&
-          activePage !== "Reports" && (
+          activePage !== "Reports" &&
+          activePage !== "Purchases" && (
             <section className="coming-soon">
               <div className="coming-icon">◈</div>
               <h2>{activePage}</h2>

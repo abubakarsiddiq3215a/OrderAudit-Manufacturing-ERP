@@ -130,3 +130,96 @@ export async function createProductionRun(productionData) {
 
     return data;
 }
+
+
+
+// ==========================================
+// PURCHASE MODULE API FUNCTIONS
+// ==========================================
+
+// Fetch all suppliers
+export async function getSuppliers() {
+    const response = await fetch(`${API_URL}/api/suppliers`);
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.message || "Unable to fetch suppliers");
+    }
+
+    return data;
+}
+
+
+// Fetch active raw materials
+export async function getMaterials() {
+    const response = await fetch(`${API_URL}/api/materials`);
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.message || "Unable to fetch materials");
+    }
+
+    return data;
+}
+
+
+// Fetch measurement units
+export async function getUnits() {
+    const response = await fetch(`${API_URL}/api/units`);
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.message || "Unable to fetch units");
+    }
+
+    return data;
+}
+
+
+// Fetch purchase history
+export async function getPurchases() {
+    const response = await fetch(`${API_URL}/api/purchases`);
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.message || "Unable to fetch purchases");
+    }
+
+    return data;
+}
+
+
+// Fetch individual purchase details
+export async function getPurchaseDetails(purchaseId) {
+    const response = await fetch(
+        `${API_URL}/api/purchases/${purchaseId}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.message || "Unable to fetch purchase details");
+    }
+
+    return data;
+}
+
+
+// Create a purchase and update stock
+export async function createPurchase(purchaseData) {
+    const response = await fetch(`${API_URL}/api/purchases`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(purchaseData)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.message || "Unable to record purchase");
+    }
+
+    return data;
+}
