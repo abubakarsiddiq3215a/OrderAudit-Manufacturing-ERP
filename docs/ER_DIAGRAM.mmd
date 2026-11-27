@@ -1,0 +1,24 @@
+# OrderAudit – Conceptual ER Diagram
+
+> Simplified conceptual view based on the inspected table groups. Confirm all foreign keys against the final SQL schema.
+
+```mermaid
+erDiagram
+    CUSTOMERS ||--o{ SALES_ORDER_HEADERS : places
+    SALES_ORDER_HEADERS ||--|{ SALES_ORDER_ITEMS : contains
+    CUSTOMERS ||--o{ INVOICE_HEADERS : receives
+    INVOICE_HEADERS ||--|{ INVOICE_ITEMS : contains
+    INVOICE_HEADERS ||--o{ CUSTOMER_PAYMENTS : receives
+    SUPPLIERS ||--o{ PURCHASE_HEADERS : supplies
+    PURCHASE_HEADERS ||--|{ PURCHASE_ITEMS : contains
+    PRODUCTS ||--o{ BOM_HEADERS : has
+    BOM_HEADERS ||--|{ BOM_ITEMS : defines
+    RAW_MATERIALS ||--o{ BOM_ITEMS : required_in
+    BOM_HEADERS ||--o{ PRODUCTION_RUNS : used_for
+    PRODUCTION_RUNS ||--o{ PRODUCTION_CONSUMPTION : records
+    RAW_MATERIALS ||--o{ PRODUCTION_CONSUMPTION : consumed
+    PRODUCTION_RUNS ||--o{ PRODUCTION_OUTPUTS : produces
+    PRODUCTS ||--o{ PRODUCTION_OUTPUTS : output_product
+```
+
+Stock movements are a separate ledger of inventory changes and source references. Units are referenced by product, material, BOM and transaction quantities.
